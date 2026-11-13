@@ -9,5 +9,17 @@ __pycache__/
 *.log
 .DS_Store
 
-# NEAT checkpoints
-neat-checkpoint-*
+# Self-contained mission search outputs
+mission_run/
+mission_smoke/
+mission_parallel_smoke/
+acceleration_smoke/
+acceleration_parallel_smoke/
+acceleration_benchmark.json
+guidance_smoke/
+guidance_parallel_smoke/
+hybrid_smoke/
+hybrid_parallel_smoke/
+mission_search/
+cleanup_smoke/
+archive/

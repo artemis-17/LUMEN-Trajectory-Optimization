@@ -1,0 +1,17 @@
+{
+  "epoch": "2035-01-01T00:00:00",
+  "epoch_start": "2030-01-01T00:00:00",
+  "epoch_end": "2045-01-01T00:00:00",
+  "years": 30,
+  "targets": [
+    "neptune"
+  ],
+  "flyby_radius_au": 0.02,
+  "escape_radius_au": 100,
+  "min_vinf_kms": 20,
+  "departure_radius_km": 1000000,
+  "departure_phase_deg": 0,
+  "departure_inclination_deg": 0,
+  "control_days": 1,
+  "sample_hours": 6
+}

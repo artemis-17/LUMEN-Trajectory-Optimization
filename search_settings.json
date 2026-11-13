@@ -1,0 +1,16 @@
+﻿{
+  "population": 12,
+  "generations": 100,
+  "workers": 4,
+  "max_evaluations": 240,
+  "seed": 42,
+  "screen_rtol": 0.000001,
+  "screen_position_atol_m": 100,
+  "screen_velocity_atol_mps": 0.001,
+  "screen_sample_hours": 24,
+  "screen_guard_au": 0.1,
+  "interpolate": true,
+  "ephemeris_step_days": 0.5,
+  "ephemeris_guard_au": 0.05,
+  "ephemeris_error_limit_m": 5000
+}

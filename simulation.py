@@ -2,8 +2,14 @@
 import numpy as np
 from scipy.integrate import solve_ivp
 from dynamics import dynamics
+from ephemerides import set_force_position
 
-def simulate_trajectory(control_fn, x0, params, save_history=False):
+
+def rhs(t, x, *args):
+    set_force_position(x[:3])
+    return dynamics(t, x, *args)
+
+def simulate_reference(control_fn, x0, params, save_history=False):
 
     def solar_event(t, x, *args):
         return np.linalg.norm(x[:3]) - params["r_min"]
@@ -30,8 +36,12 @@ def simulate_trajectory(control_fn, x0, params, save_history=False):
     x_hist = [x.copy()]
 
     r_min = np.linalg.norm(x[:3])
+    x_r_min = x.copy()
     t_r_min = 0.0
     status = "time_limit"
+    nfev = 0
+    end_time = params['T']
+    next_command = 0.0
 
     args_common = (
         params["et0"],
@@ -40,9 +50,11 @@ def simulate_trajectory(control_fn, x0, params, save_history=False):
         params["sail_params"]
     )
 
-    while t < params["T"] - 1e-7:
+    while t < end_time - 1e-7:
 
-        alpha, delta = map(float, control_fn(t, x))
+        if t >= next_command-1e-7:
+            alpha, delta = map(float, control_fn(t, x))
+            next_command = t+params['dt_control']
 
         if not np.all(np.isfinite([alpha, delta])) or not 0 <= alpha <= np.pi/2:
             raise ValueError("Invalid solar sail control angles")
@@ -51,10 +63,10 @@ def simulate_trajectory(control_fn, x0, params, save_history=False):
         def held_control(tt, xx):
             return alpha, delta
 
-        t_next = min(t + params["dt_control"], params["T"])
+        t_next = min(next_command,end_time)
 
         sol = solve_ivp(
-            dynamics, (t, t_next), x,
+            rhs, (t, t_next), x,
             args=(*args_common, held_control),
             events=(solar_event, goal_event, perihelion_event),
             method="DOP853",
@@ -66,6 +78,7 @@ def simulate_trajectory(control_fn, x0, params, save_history=False):
 
         if not sol.success:
             raise RuntimeError(sol.message)
+        nfev += sol.nfev
 
         # Track closest solar approach
         radii = np.linalg.norm(sol.y[:3], axis=0)
@@ -74,12 +87,14 @@ def simulate_trajectory(control_fn, x0, params, save_history=False):
         if radii[i] < r_min:
             r_min = radii[i]
             t_r_min = sol.t[i]
+            x_r_min = sol.y[:,i].copy()
 
         for ti, xi in zip(sol.t_events[2], sol.y_events[2]):
             ri = np.linalg.norm(xi[:3])
             if ri < r_min:
                 r_min = ri
                 t_r_min = ti
+                x_r_min = xi.copy()
 
         t_end = sol.t[-1]
 
@@ -107,11 +122,20 @@ def simulate_trajectory(control_fn, x0, params, save_history=False):
 
     return {
         "status": status,
+        "nfev": nfev,
         "x0": np.asarray(x0),
         "x_final": x,
         "t_final": t,
         "r_min": r_min,
         "t_r_min": t_r_min,
+        "x_r_min": x_r_min,
         "t": np.array(t_hist) if save_history else None,
         "X": np.array(x_hist).T if save_history else None
     }
+
+
+def simulate_trajectory(control_fn, x0, params, save_history=False):
+    if params.get('backend', 'persistent') == 'reference':
+        return simulate_reference(control_fn, x0, params, save_history)
+    from integrator import simulate_persistent
+    return simulate_persistent(control_fn, x0, params, save_history)
