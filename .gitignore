@@ -1,0 +1,13 @@
+
+# Python environment
+.venv/
+__pycache__/
+*.pyc
+*.pyo
+
+# Temporary files
+*.log
+.DS_Store
+
+# NEAT checkpoints
+neat-checkpoint-*
