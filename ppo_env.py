@@ -88,7 +88,7 @@ class SolarSailPPOEnv(gym.Env):
         # a manually defined inbound/outbound phase.
         self.action_space = spaces.Box(-1.0, 1.0, shape=(2,), dtype=np.float32)
         # Full J2000 state, orbital features and epoch-relative time.
-        self.observation_space = spaces.Box(-20.0, 20.0, shape=(11,), dtype=np.float32)
+        self.observation_space = spaces.Box(-20.0, 20.0, shape=(15,), dtype=np.float32)
         self.rtol = 1e-10 if accurate else 2e-7
         self.atol = ([0.1] * 3 + [1e-6] * 3) if accurate else ([20.0] * 3 + [2e-4] * 3)
         self.reset()
@@ -125,12 +125,35 @@ class SolarSailPPOEnv(gym.Env):
 
     def _observe(self):
         r, v = self.x[:3], self.x[3:]
+
         radius = np.linalg.norm(r)
         radial_speed = np.dot(r, v) / radius
         transverse_speed = np.linalg.norm(v - radial_speed * r / radius)
-        obs = np.r_[r / AU, v / V_REF, radius / AU,
-                    radial_speed / V_REF, transverse_speed / V_REF,
-                    self._energy(self.x) / E_REF, self.t / self.T]
+
+        # Orbital elements
+        h = np.cross(r, v)
+        e_vec = np.cross(v, h) / self.mu_sun - r / radius
+        e = np.linalg.norm(e_vec)
+        rp = self._perihelion(self.x)
+
+        # Current reward phase
+        phase = float(self.r_min <= 0.25 * AU)
+
+        # Observation vector
+        obs = np.r_[
+            r / AU,
+            v / V_REF,
+            radius / AU,
+            radial_speed / V_REF,
+            transverse_speed / V_REF,
+            self._energy(self.x) / E_REF,
+            self.t / self.T,
+            rp / AU,
+            e,
+            self.r_min / AU,
+            phase
+        ]
+
         return np.clip(obs, -20.0, 20.0).astype(np.float32)
 
     def _info(self, success=False):
@@ -233,7 +256,7 @@ class SolarSailPPOEnv(gym.Env):
         if r_min_previous > 0.25 * AU:
             # Phase 1: Minimize osculating perihelion
             reward += 5.0 * (rp_min_previous - rp_min) / AU
-            reward += 5.0 * (vp - vp_previous) / V_REF
+            #reward += 5.0 * (vp - vp_previous) / V_REF
 
         else:
             # Phase 2: Maximize specific orbital energy

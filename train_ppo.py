@@ -35,14 +35,16 @@ def main():
         n_steps=2048,
         batch_size=256,
         n_epochs=10,
-        gamma=0.999,
-        gae_lambda=0.95,
+        gamma=0.9999,
+        gae_lambda=0.99,
         ent_coef=0.01,
         policy_kwargs={"net_arch": [64, 64]},
         tensorboard_log=str(folder / "tb"),
         seed=args.seed,
         device="cpu",
         verbose=1,
+        use_sde=True,
+        sde_sample_freq=32
     )
     checkpoint = CheckpointCallback(save_freq=20_000,
                                      save_path=str(folder / "checkpoints"),
