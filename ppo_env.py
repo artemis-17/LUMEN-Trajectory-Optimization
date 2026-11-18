@@ -97,6 +97,32 @@ class SolarSailPPOEnv(gym.Env):
         r = np.linalg.norm(x[:3])
         return float(0.5 * np.dot(x[3:], x[3:]) - self.mu_sun / r)
 
+    def _perihelion(self, x):
+        r = x[:3]
+        v = x[3:]
+
+        h = np.cross(r, v)
+
+        e = np.linalg.norm(
+            np.cross(v, h) / self.mu_sun
+            - r / np.linalg.norm(r)
+        )
+
+        return float(np.dot(h, h) / (self.mu_sun * (1 + e)))
+
+    def _perihelion_speed(self, x):
+        r = x[:3]
+        v = x[3:]
+
+        # Specific angular momentum
+        h = np.linalg.norm(np.cross(r, v))
+
+        # Osculating perihelion distance
+        rp = self._perihelion(x)
+
+        # Perihelion speed (m/s)
+        return float(h / rp)
+
     def _observe(self):
         r, v = self.x[:3], self.x[3:]
         radius = np.linalg.norm(r)
@@ -139,6 +165,14 @@ class SolarSailPPOEnv(gym.Env):
         t_start = self.t
         t_end = min(t_start + self.dt, self.T)
 
+        radius_previous = np.linalg.norm(self.x[:3])
+        # previous perihelion distance
+        radius_previous = np.linalg.norm(self.x[:3])
+        rp_min_previous = self._perihelion(self.x)
+        r_min_previous = self.r_min
+        previous_E = self._energy(self.x)
+        vp_previous = self._perihelion_speed(self.x)
+
         def rhs(t, x):
             if self.include_planets:
                 return dynamics(t, x, self.params["et0"], self.mu_sun,
@@ -176,12 +210,15 @@ class SolarSailPPOEnv(gym.Env):
         energy = self._energy(self.x)
         radius = np.linalg.norm(self.x[:3])
         outward = np.dot(self.x[:3], self.x[3:]) > 0
-        success = bool(radius >= self.r_goal and energy > 0 and outward)
+        success = bool(radius >= self.r_goal and self.r_min <= 0.25 * AU and outward and energy > 0.0)
         solar_violation = bool(len(sol.t_events[0]))
         terminated = success or solar_violation
         truncated = bool(self.t >= self.T - 1e-6 and not terminated)
 
         # Main objective: arrive quickly; no reward for spiraling inward.
+                # previous perihelion distance
+        rp_min = self._perihelion(self.x)
+        vp = self._perihelion_speed(self.x)
 
         # Time penalty
         reward = -(self.t - t_start) / self.T
@@ -191,6 +228,17 @@ class SolarSailPPOEnv(gym.Env):
 
         # Heliocentric hyperbolic excess speed
         v_inf = np.sqrt(max(0.0, 2.0 * energy))
+
+        # Phase-dependent reward
+        if r_min_previous > 0.25 * AU:
+            # Phase 1: Minimize osculating perihelion
+            reward += 5.0 * (rp_min_previous - rp_min) / AU
+            reward += 5.0 * (vp - vp_previous) / V_REF
+
+        else:
+            # Phase 2: Maximize specific orbital energy
+            reward += 10.0 * (energy - previous_E) / E_REF
+
 
         if success:
 
@@ -205,7 +253,7 @@ class SolarSailPPOEnv(gym.Env):
             reward -= 20.0
 
         elif truncated and self.terminal_shaping:
-
+            # Can turn this off with --no-shaping; otherwise, reward is shaped to encourage outward progress.
             # Reward net energy gains even if 5 AU is not reached
             reward += 6.0 * np.tanh(energy_gain / E_REF)
 
