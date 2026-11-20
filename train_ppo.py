@@ -15,11 +15,13 @@ def main():
     parser.add_argument("--timesteps", type=int, default=50_000)
     parser.add_argument("--planets", action="store_true", help="Train with full planetary perturbations (slower)")
     parser.add_argument("--no-shaping", action="store_true", help="Pure arrival/time/thermal reward, with no timeout shaping")
-    parser.add_argument("--output", default="ppo_runs")
+    parser.add_argument("--output", default="test_runs", help="Output path within test_runs")
     parser.add_argument("--seed", type=int, default=42)
     args = parser.parse_args()
 
-    folder = Path(args.output)
+    folder = Path(args.output).resolve()
+    if not folder.is_relative_to(Path("test_runs").resolve()):
+        parser.error("--output must be test_runs or a path within test_runs")
     folder.mkdir(parents=True, exist_ok=True)
     x0, params = make_initial_state()
 

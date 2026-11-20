@@ -17,3 +17,7 @@ acceleration_benchmark.json
 /mission_search
 /mission_run
 /archive
+
+# Local PPO run folders
+/test_runs/
+/ppo_*/

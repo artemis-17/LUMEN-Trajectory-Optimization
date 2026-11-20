@@ -20,7 +20,7 @@ E_REF = 0.5 * V_REF**2  # m^2/s^2
 
 
 def make_initial_state(epoch="2035-01-01T00:00:00"):
-    """Exactly reproduce main.py's initial state and spacecraft parameters.
+    """Build the LUMEN initial state and spacecraft parameters.
 
     This is a heliocentric starting condition, NOT an Earth-escape simulation.
     """

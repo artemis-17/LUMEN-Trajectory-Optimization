@@ -11,7 +11,7 @@ from ppo_env import SolarSailPPOEnv, make_initial_state, DAY, AU
 
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument("--model", default="ppo_runs/lumen_ppo")
+    parser.add_argument("--model", default="test_runs/lumen_ppo")
     parser.add_argument("--planets", action="store_true", help="Use the original full planetary dynamics")
     parser.add_argument("--plot-3d", action="store_true", help="Open the existing Plotly solar-system figure")
     args = parser.parse_args()
@@ -40,7 +40,10 @@ def main():
     print(f"Minimum radius: {info['perihelion_au']:.3f} AU")
     print(f"Final osculating v-infinity: {info['v_inf_km_s']:.3f} km/s")
 
-    folder = Path(args.model).parent
+    runs = Path("test_runs").resolve()
+    folder = Path(args.model).resolve().parent
+    if not folder.is_relative_to(runs):
+        folder = runs
     folder.mkdir(parents=True, exist_ok=True)
     suffix = "planets" if args.planets else "sun_only"
     np.savez_compressed(folder / f"ppo_trajectory_{suffix}.npz",

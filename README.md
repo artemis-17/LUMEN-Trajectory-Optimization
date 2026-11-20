@@ -39,7 +39,8 @@ The project is organized around the following modules (names reflect the current
 
 ```text
 LUMEN/
-├── main.py               # Scenario parameters and NEAT training entry point
+├── train_ppo.py          # PPO training entry point
+├── evaluate_ppo.py       # PPO trajectory replay and plots
 ├── dynamics.py           # Spacecraft state derivatives
 ├── solar_sail.py         # Sail acceleration model
 ├── ephemerides.py        # SPICE loading, gravitational parameters, planet states
@@ -99,10 +100,11 @@ The authoritative source is NASA/JPL's [NAIF generic kernels archive](https://na
 
 ## Running the project
 
-Train NEAT and inspect its best trajectory:
+Train PPO and inspect the saved policy's trajectory:
 
 ```powershell
-python main.py
+python train_ppo.py
+python evaluate_ppo.py --plot-3d
 ```
 
 If you have already trained and saved `best_genome.pkl`, evaluate it without retraining:
